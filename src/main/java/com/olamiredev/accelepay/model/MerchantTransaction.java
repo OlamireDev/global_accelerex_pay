@@ -1,0 +1,39 @@
+package com.olamiredev.accelepay.model;
+
+import com.olamiredev.accelepay.enums.PaymentStatus;
+import com.olamiredev.accelepay.enums.PaymentType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+
+@Entity
+@Table
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class MerchantTransaction extends BaseModel{
+
+    @OneToOne
+    private User user;
+
+    private String transactionReferenceNumber;
+
+    private String paymentDescription;
+
+    private BigDecimal paymentAmount;
+
+    private PaymentType paymentType;
+
+    private String paymentTypeDetails;
+
+    private PaymentStatus paymentStatus;
+
+    private String paymentError;
+
+
+}
