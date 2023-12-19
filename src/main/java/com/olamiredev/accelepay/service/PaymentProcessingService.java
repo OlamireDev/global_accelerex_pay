@@ -16,7 +16,7 @@ import com.olamiredev.accelepay.payload.request.AccelePayPaymentRequest;
 import com.olamiredev.accelepay.payload.request.CardPaymentType;
 import com.olamiredev.accelepay.payload.request.MerchantPaymentRequest;
 import com.olamiredev.accelepay.payload.request.PersonalPaymentRequest;
-import com.olamiredev.accelepay.payload.response.MerchantCardPaymentResponse;
+import com.olamiredev.accelepay.payload.response.DefaultPaymentResponse;
 import com.olamiredev.accelepay.payload.response.PaymentResponse;
 import com.olamiredev.accelepay.repository.BankAccountRepository;
 import com.olamiredev.accelepay.repository.MerchantTransactionRepository;
@@ -102,13 +102,13 @@ public class PaymentProcessingService {
                         .transactionPaymentType(TransactionPaymentType.CARD).paymentTypeDetails(encryptedCardDetails)
                         .paymentStatus(PaymentStatus.FAILED).paymentError(transactionServiceResponse.first().name()).build();
                 merchantTransactionRepo.save(merchantTransaction);
-                return new MerchantCardPaymentResponse(transactionServiceResponse.first(), merchantTransaction.getTransactionReferenceNumber(), PaymentStatus.FAILED, paymentRequest.getAmountToPay());
+                return new DefaultPaymentResponse(transactionServiceResponse.first(), merchantTransaction.getTransactionReferenceNumber(), PaymentStatus.FAILED, paymentRequest.getAmountToPay());
             }
             var merchantTransaction = MerchantTransaction.builder().transactionReferenceNumber(generateReferenceId(merchant.getFullName()))
                     .paymentAmount(paymentRequest.getAmountToPay()).user(merchant).paymentDescription(paymentRequest.getPaymentDescription())
                     .transactionPaymentType(TransactionPaymentType.CARD).paymentTypeDetails(encryptedCardDetails).paymentStatus(PaymentStatus.SUCCESSFUL).build();
             merchantTransactionRepo.save(merchantTransaction);
-            return new MerchantCardPaymentResponse(null, merchantTransaction.getTransactionReferenceNumber(), PaymentStatus.SUCCESSFUL, paymentRequest.getAmountToPay());
+            return new DefaultPaymentResponse(null, merchantTransaction.getTransactionReferenceNumber(), PaymentStatus.SUCCESSFUL, paymentRequest.getAmountToPay());
         }
         throw new APException(APErrorType.BAD_REQUEST, "Invalid payment request", this.getClass().getName());
     }
@@ -139,7 +139,7 @@ public class PaymentProcessingService {
                         .destinationAccountNumber(paymentRequest.getDestinationAccountNumber()).destinationAccountName(paymentRequest.getDestinationAccountName())
                         .destinationBank(paymentRequest.getDestinationBank()).build();
                 personalTransactionRepo.save(personalTransaction);
-                return new MerchantCardPaymentResponse(transactionServiceResponse.first(),personalTransaction.getTransactionReferenceNumber(), PaymentStatus.FAILED, paymentRequest.getAmountToPay());
+                return new DefaultPaymentResponse(transactionServiceResponse.first(),personalTransaction.getTransactionReferenceNumber(), PaymentStatus.FAILED, paymentRequest.getAmountToPay());
             }
             var personalTransaction = PersonalTransaction.builder().transactionReferenceNumber(generateReferenceId(customer.getFullName()))
                     .paymentAmount(paymentRequest.getAmountToPay()).user(customer).paymentDescription(paymentRequest.getPaymentDescription())
@@ -147,7 +147,7 @@ public class PaymentProcessingService {
                     .destinationAccountNumber(paymentRequest.getDestinationAccountNumber()).destinationAccountName(paymentRequest.getDestinationAccountName())
                     .destinationBank(paymentRequest.getDestinationBank()).build();
             personalTransactionRepo.save(personalTransaction);
-            return new MerchantCardPaymentResponse(null, personalTransaction.getTransactionReferenceNumber(), PaymentStatus.SUCCESSFUL,paymentRequest.getAmountToPay());
+            return new DefaultPaymentResponse(null, personalTransaction.getTransactionReferenceNumber(), PaymentStatus.SUCCESSFUL,paymentRequest.getAmountToPay());
         }
         throw new APException(APErrorType.BAD_REQUEST, "Invalid payment request", this.getClass().getName());
     }

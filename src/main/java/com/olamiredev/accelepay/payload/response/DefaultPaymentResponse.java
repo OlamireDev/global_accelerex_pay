@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class MerchantCardPaymentResponse  extends PaymentResponse{
+public class DefaultPaymentResponse extends PaymentResponse{
 
     private PaymentRequestError error;
 
