@@ -6,25 +6,27 @@ import com.olamiredev.accelepay.data.AccountDetail;
 import com.olamiredev.accelepay.data.error.APErrorType;
 import com.olamiredev.accelepay.enums.APAccountType;
 import com.olamiredev.accelepay.enums.PaymentStatus;
-import com.olamiredev.accelepay.enums.PaymentType;
+import com.olamiredev.accelepay.enums.TransactionPaymentType;
 import com.olamiredev.accelepay.enums.UserType;
 import com.olamiredev.accelepay.exception.APException;
 import com.olamiredev.accelepay.model.BankAccount;
 import com.olamiredev.accelepay.model.MerchantTransaction;
+import com.olamiredev.accelepay.model.PersonalTransaction;
 import com.olamiredev.accelepay.payload.request.AccelePayPaymentRequest;
 import com.olamiredev.accelepay.payload.request.CardPaymentType;
 import com.olamiredev.accelepay.payload.request.MerchantPaymentRequest;
+import com.olamiredev.accelepay.payload.request.PersonalPaymentRequest;
 import com.olamiredev.accelepay.payload.response.MerchantCardPaymentResponse;
 import com.olamiredev.accelepay.payload.response.PaymentResponse;
 import com.olamiredev.accelepay.repository.BankAccountRepository;
 import com.olamiredev.accelepay.repository.MerchantTransactionRepository;
+import com.olamiredev.accelepay.repository.PersonalTransactionRepository;
 import com.olamiredev.accelepay.repository.UsersRepository;
 import com.olamiredev.accelepay.util.EncryptDecrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.Optional;
 
 @Service
@@ -48,11 +50,16 @@ public class PaymentProcessingService {
     @Autowired
     MerchantTransactionRepository merchantTransactionRepo;
 
+    @Autowired
+    PersonalTransactionRepository personalTransactionRepo;
+
     ObjectMapper objectMapper = new ObjectMapper();
 
     public PaymentResponse processPayment(AccelePayPaymentRequest accelePayPaymentRequest) throws JsonProcessingException, APException {
         if(accelePayPaymentRequest instanceof MerchantPaymentRequest merchantPaymentRequest) {
             return processMerchantPayment(merchantPaymentRequest);
+        } else if (accelePayPaymentRequest instanceof PersonalPaymentRequest personalPaymentRequest) {
+            return processCustomerPayment(personalPaymentRequest);
         }
         throw new APException(APErrorType.BAD_REQUEST, "Invalid payment request", this.getClass().getName());
     }
@@ -87,29 +94,73 @@ public class PaymentProcessingService {
             }
             var accountDetail = cardProcessingResponse.second();
             var transactionServiceResponse = transactionService.handleAccountTransaction(AccountDetail.fromBankAccount(bankAccount), accountDetail, paymentRequest.getAmountToPay(), paymentRequest.getPaymentDescription());
-            var dateTime = LocalDateTime.now();
             var encryptedCardDetails = objectMapper.writeValueAsString(cardPaymentType);
             encryptedCardDetails = encryptDecrypt.encrypt(encryptedCardDetails);
-            var referenceId = ((int) (Math.random() * 9999)) + "-"+ Arrays.toString(merchant.getFullName().getBytes()).replaceAll(",","")+"-"+dateTime.getYear()+dateTime.getMonth()+dateTime.getDayOfMonth()+dateTime.getHour()+dateTime.getMinute();
             if(transactionServiceResponse.hasFirst()){
-                var merchantTransaction = MerchantTransaction.builder().transactionReferenceNumber(referenceId)
+                var merchantTransaction = MerchantTransaction.builder().transactionReferenceNumber(generateReferenceId(merchant.getFullName()))
                         .paymentAmount(paymentRequest.getAmountToPay()).user(merchant).paymentDescription(paymentRequest.getPaymentDescription())
-                        .paymentType(PaymentType.CARD).paymentTypeDetails(encryptedCardDetails)
+                        .transactionPaymentType(TransactionPaymentType.CARD).paymentTypeDetails(encryptedCardDetails)
                         .paymentStatus(PaymentStatus.FAILED).paymentError(transactionServiceResponse.first().name()).build();
                 merchantTransactionRepo.save(merchantTransaction);
-                return new MerchantCardPaymentResponse(transactionServiceResponse.first(),referenceId);
+                return new MerchantCardPaymentResponse(transactionServiceResponse.first(), merchantTransaction.getTransactionReferenceNumber(), PaymentStatus.FAILED, paymentRequest.getAmountToPay());
             }
-            var merchantTransaction = MerchantTransaction.builder().transactionReferenceNumber(referenceId)
+            var merchantTransaction = MerchantTransaction.builder().transactionReferenceNumber(generateReferenceId(merchant.getFullName()))
                     .paymentAmount(paymentRequest.getAmountToPay()).user(merchant).paymentDescription(paymentRequest.getPaymentDescription())
-                    .paymentType(PaymentType.CARD).paymentTypeDetails(encryptedCardDetails).paymentStatus(PaymentStatus.SUCCESSFUL).build();
+                    .transactionPaymentType(TransactionPaymentType.CARD).paymentTypeDetails(encryptedCardDetails).paymentStatus(PaymentStatus.SUCCESSFUL).build();
             merchantTransactionRepo.save(merchantTransaction);
-            return new MerchantCardPaymentResponse(referenceId, paymentRequest.getAmountToPay());
+            return new MerchantCardPaymentResponse(null, merchantTransaction.getTransactionReferenceNumber(), PaymentStatus.SUCCESSFUL, paymentRequest.getAmountToPay());
         }
         throw new APException(APErrorType.BAD_REQUEST, "Invalid payment request", this.getClass().getName());
     }
 
-    private PaymentResponse processCustomerPayment() {
-        return null;
+    private PaymentResponse processCustomerPayment(PersonalPaymentRequest paymentRequest) throws APException, JsonProcessingException {
+        var customerOpt = userRepo.findByApiKeyAndUserType(encryptDecrypt.encrypt(paymentRequest.getApiKey()), UserType.PERSONAL);
+        if(customerOpt.isEmpty()) {
+            throw new APException(APErrorType.UNAUTHORIZED, "Customer Key provided is not valid", this.getClass().getName());
+        }
+        var customer = customerOpt.get();
+        if(paymentRequest.getPaymentType() instanceof CardPaymentType cardPaymentType) {
+            var cardProcessingResponse = cardProcessingService.getCardAccountDetails(cardPaymentType);
+            if(cardProcessingResponse.hasFirst()) {
+                throw new APException(APErrorType.ACCOUNT_PROCESSING_ERROR,
+                        cardProcessingResponse.first(), this.getClass().getName());
+            }
+            var sourceAccountDetail = cardProcessingResponse.second();
+            var destinationAccountDetail = AccountDetail.builder().accountName(paymentRequest.getDestinationAccountName())
+                    .accountNumber(paymentRequest.getDestinationAccountNumber()).bankName(paymentRequest.getDestinationBank()).build();
+            var transactionServiceResponse = transactionService.handleAccountTransaction(destinationAccountDetail, sourceAccountDetail, paymentRequest.getAmountToPay(), paymentRequest.getPaymentDescription());
+            var encryptedCardDetails = objectMapper.writeValueAsString(cardPaymentType);
+            encryptedCardDetails = encryptDecrypt.encrypt(encryptedCardDetails);
+            if(transactionServiceResponse.hasFirst()){
+                var personalTransaction = PersonalTransaction.builder().transactionReferenceNumber(generateReferenceId(customer.getFullName()))
+                        .paymentAmount(paymentRequest.getAmountToPay()).user(customer).paymentDescription(paymentRequest.getPaymentDescription())
+                        .transactionPaymentType(TransactionPaymentType.CARD).paymentTypeDetails(encryptedCardDetails)
+                        .paymentStatus(PaymentStatus.FAILED).paymentError(transactionServiceResponse.first().name())
+                        .destinationAccountNumber(paymentRequest.getDestinationAccountNumber()).destinationAccountName(paymentRequest.getDestinationAccountName())
+                        .destinationBank(paymentRequest.getDestinationBank()).build();
+                personalTransactionRepo.save(personalTransaction);
+                return new MerchantCardPaymentResponse(transactionServiceResponse.first(),personalTransaction.getTransactionReferenceNumber(), PaymentStatus.FAILED, paymentRequest.getAmountToPay());
+            }
+            var personalTransaction = PersonalTransaction.builder().transactionReferenceNumber(generateReferenceId(customer.getFullName()))
+                    .paymentAmount(paymentRequest.getAmountToPay()).user(customer).paymentDescription(paymentRequest.getPaymentDescription())
+                    .transactionPaymentType(TransactionPaymentType.CARD).paymentTypeDetails(encryptedCardDetails).paymentStatus(PaymentStatus.SUCCESSFUL)
+                    .destinationAccountNumber(paymentRequest.getDestinationAccountNumber()).destinationAccountName(paymentRequest.getDestinationAccountName())
+                    .destinationBank(paymentRequest.getDestinationBank()).build();
+            personalTransactionRepo.save(personalTransaction);
+            return new MerchantCardPaymentResponse(null, personalTransaction.getTransactionReferenceNumber(), PaymentStatus.SUCCESSFUL,paymentRequest.getAmountToPay());
+        }
+        throw new APException(APErrorType.BAD_REQUEST, "Invalid payment request", this.getClass().getName());
+    }
+
+
+    private String generateReferenceId(String fullName) {
+        var dateTime = LocalDateTime.now();
+        var byteArray = fullName.getBytes();
+        long sum =0;
+        for (byte b : byteArray) {
+            sum += b;
+        }
+        return ((int) (Math.random() * 9999)) + "-"+ sum +"-"+dateTime.getYear()+dateTime.getMonth().ordinal()+dateTime.getDayOfMonth()+dateTime.getHour()+dateTime.getMinute();
     }
 
 }

@@ -1,5 +1,6 @@
 package com.olamiredev.accelepay.payload.request;
 
+import com.olamiredev.accelepay.enums.RecognisedBank;
 import com.olamiredev.accelepay.enums.SupportedPlatform;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -12,7 +13,7 @@ import java.math.BigDecimal;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class MerchantPaymentRequest extends AccelePayPaymentRequest {
+public class PersonalPaymentRequest extends AccelePayPaymentRequest {
 
     private String apiKey;
 
@@ -22,7 +23,11 @@ public class MerchantPaymentRequest extends AccelePayPaymentRequest {
 
     private String paymentDescription;
 
-    private Long alternateAccountId;
+    private String destinationAccountNumber;
+
+    private RecognisedBank destinationBank;
+
+    private String destinationAccountName;
 
     private SupportedPlatform requestPlatform;
 

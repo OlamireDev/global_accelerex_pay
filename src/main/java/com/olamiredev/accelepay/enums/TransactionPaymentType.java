@@ -1,6 +1,6 @@
 package com.olamiredev.accelepay.enums;
 
-public enum PaymentType {
+public enum TransactionPaymentType {
 
     CARD
 

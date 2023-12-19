@@ -1,6 +1,7 @@
 package com.olamiredev.accelepay.model;
 
 import com.olamiredev.accelepay.enums.PaymentStatus;
+import com.olamiredev.accelepay.enums.RecognisedBank;
 import com.olamiredev.accelepay.enums.SupportedPlatform;
 import com.olamiredev.accelepay.enums.TransactionPaymentType;
 import jakarta.persistence.Entity;
@@ -19,7 +20,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Getter
 @Builder
-public class MerchantTransaction extends BaseModel{
+public class PersonalTransaction extends BaseModel{
 
     @ManyToOne
     private User user;
@@ -38,7 +39,12 @@ public class MerchantTransaction extends BaseModel{
 
     private String paymentError;
 
-    private SupportedPlatform requestPlatform;
+    private String destinationAccountNumber;
 
+    private String destinationAccountName;
+
+    private RecognisedBank destinationBank;
+
+    private SupportedPlatform requestPlatform;
 
 }
