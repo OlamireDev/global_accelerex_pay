@@ -21,7 +21,7 @@ import java.math.BigDecimal;
 @Getter
 @Builder
 public class PersonalTransaction extends BaseModel{
-
+    
     @ManyToOne
     private User user;
 
@@ -46,5 +46,6 @@ public class PersonalTransaction extends BaseModel{
     private RecognisedBank destinationBank;
 
     private SupportedPlatform requestPlatform;
+
 
 }

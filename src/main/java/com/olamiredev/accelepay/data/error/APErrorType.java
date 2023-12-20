@@ -6,6 +6,7 @@ import lombok.Getter;
 public enum APErrorType {
 
     ACCOUNT_PROCESSING_ERROR(500),
+    APPLICATION_EXCEPTION(500),
     BAD_REQUEST(400),
     UNAUTHORIZED(401),
     NOT_FOUND(404);

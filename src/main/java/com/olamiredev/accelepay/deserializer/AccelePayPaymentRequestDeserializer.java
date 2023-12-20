@@ -7,10 +7,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.olamiredev.accelepay.enums.RecognisedBank;
 import com.olamiredev.accelepay.enums.SupportedPlatform;
-import com.olamiredev.accelepay.payload.request.AccelePayPaymentRequest;
-import com.olamiredev.accelepay.payload.request.MerchantPaymentRequest;
-import com.olamiredev.accelepay.payload.request.PaymentType;
-import com.olamiredev.accelepay.payload.request.PersonalPaymentRequest;
+import com.olamiredev.accelepay.payload.request.payment.make.AccelePayPaymentRequest;
+import com.olamiredev.accelepay.payload.request.payment.make.MerchantPaymentRequest;
+import com.olamiredev.accelepay.payload.request.payment.make.PaymentType;
+import com.olamiredev.accelepay.payload.request.payment.make.PersonalPaymentRequest;
 import lombok.SneakyThrows;
 
 import java.io.IOException;

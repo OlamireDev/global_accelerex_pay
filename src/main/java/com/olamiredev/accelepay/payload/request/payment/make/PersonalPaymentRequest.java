@@ -1,4 +1,4 @@
-package com.olamiredev.accelepay.payload.request;
+package com.olamiredev.accelepay.payload.request.payment.make;
 
 import com.olamiredev.accelepay.enums.RecognisedBank;
 import com.olamiredev.accelepay.enums.SupportedPlatform;

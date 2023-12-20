@@ -1,13 +1,12 @@
 package com.olamiredev.accelepay.deserializer;
 
-import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.olamiredev.accelepay.payload.request.CardPaymentType;
-import com.olamiredev.accelepay.payload.request.PaymentType;
+import com.olamiredev.accelepay.payload.request.payment.make.CardPaymentType;
+import com.olamiredev.accelepay.payload.request.payment.make.PaymentType;
 
 import java.io.IOException;
 

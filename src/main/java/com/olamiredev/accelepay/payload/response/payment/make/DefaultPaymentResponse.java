@@ -1,4 +1,4 @@
-package com.olamiredev.accelepay.payload.response;
+package com.olamiredev.accelepay.payload.response.payment.make;
 
 import com.olamiredev.accelepay.data.error.PaymentRequestError;
 import com.olamiredev.accelepay.enums.PaymentStatus;

@@ -10,4 +10,6 @@ public interface UsersRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByApiKeyAndUserType(String apiKey, UserType userType);
 
+    Optional<User> findByApiKey(String apiKey);
+
 }

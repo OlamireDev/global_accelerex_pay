@@ -12,24 +12,31 @@ import com.olamiredev.accelepay.exception.APException;
 import com.olamiredev.accelepay.model.BankAccount;
 import com.olamiredev.accelepay.model.MerchantTransaction;
 import com.olamiredev.accelepay.model.PersonalTransaction;
-import com.olamiredev.accelepay.payload.request.AccelePayPaymentRequest;
-import com.olamiredev.accelepay.payload.request.CardPaymentType;
-import com.olamiredev.accelepay.payload.request.MerchantPaymentRequest;
-import com.olamiredev.accelepay.payload.request.PersonalPaymentRequest;
-import com.olamiredev.accelepay.payload.response.DefaultPaymentResponse;
-import com.olamiredev.accelepay.payload.response.PaymentResponse;
+import com.olamiredev.accelepay.payload.request.payment.get.GetPaymentsRequestDTO;
+import com.olamiredev.accelepay.payload.request.payment.make.AccelePayPaymentRequest;
+import com.olamiredev.accelepay.payload.request.payment.make.CardPaymentType;
+import com.olamiredev.accelepay.payload.request.payment.make.MerchantPaymentRequest;
+import com.olamiredev.accelepay.payload.request.payment.make.PersonalPaymentRequest;
+import com.olamiredev.accelepay.payload.response.payment.get.*;
+import com.olamiredev.accelepay.payload.response.payment.make.DefaultPaymentResponse;
+import com.olamiredev.accelepay.payload.response.payment.make.PaymentResponse;
 import com.olamiredev.accelepay.repository.BankAccountRepository;
 import com.olamiredev.accelepay.repository.MerchantTransactionRepository;
 import com.olamiredev.accelepay.repository.PersonalTransactionRepository;
 import com.olamiredev.accelepay.repository.UsersRepository;
 import com.olamiredev.accelepay.util.EncryptDecrypt;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class PaymentProcessingService {
 
     @Autowired
@@ -137,7 +144,7 @@ public class PaymentProcessingService {
                         .transactionPaymentType(TransactionPaymentType.CARD).paymentTypeDetails(encryptedCardDetails)
                         .paymentStatus(PaymentStatus.FAILED).paymentError(transactionServiceResponse.first().name())
                         .destinationAccountNumber(paymentRequest.getDestinationAccountNumber()).destinationAccountName(paymentRequest.getDestinationAccountName())
-                        .destinationBank(paymentRequest.getDestinationBank()).build();
+                        .destinationBank(paymentRequest.getDestinationBank()).requestPlatform(paymentRequest.getRequestPlatform()).build();
                 personalTransactionRepo.save(personalTransaction);
                 return new DefaultPaymentResponse(transactionServiceResponse.first(),personalTransaction.getTransactionReferenceNumber(), PaymentStatus.FAILED, paymentRequest.getAmountToPay());
             }
@@ -145,13 +152,39 @@ public class PaymentProcessingService {
                     .paymentAmount(paymentRequest.getAmountToPay()).user(customer).paymentDescription(paymentRequest.getPaymentDescription())
                     .transactionPaymentType(TransactionPaymentType.CARD).paymentTypeDetails(encryptedCardDetails).paymentStatus(PaymentStatus.SUCCESSFUL)
                     .destinationAccountNumber(paymentRequest.getDestinationAccountNumber()).destinationAccountName(paymentRequest.getDestinationAccountName())
-                    .destinationBank(paymentRequest.getDestinationBank()).build();
+                    .destinationBank(paymentRequest.getDestinationBank()).requestPlatform(paymentRequest.getRequestPlatform()).build();
             personalTransactionRepo.save(personalTransaction);
             return new DefaultPaymentResponse(null, personalTransaction.getTransactionReferenceNumber(), PaymentStatus.SUCCESSFUL,paymentRequest.getAmountToPay());
         }
         throw new APException(APErrorType.BAD_REQUEST, "Invalid payment request", this.getClass().getName());
     }
 
+    public GetPaymentsResponse getPayments(GetPaymentsRequestDTO getPaymentsRequest) throws APException{
+        var userOpt = userRepo.findByApiKey(encryptDecrypt.encrypt(getPaymentsRequest.getApiKey()));
+        if(userOpt.isEmpty()){
+            throw new APException(APErrorType.NOT_FOUND, "User with the provided API key not found", this.getClass().getName());
+        }
+        var user = userOpt.get();
+        var pageNumber = getPaymentsRequest.getPageNumber();
+        var pageSize = getPaymentsRequest.getPageSize();
+        if(pageNumber < 0) pageNumber = 0;
+        if(pageSize < 1) pageSize = 1;
+        var pageRequest = PageRequest.of(pageNumber, pageSize);
+        if(user.getUserType().equals(UserType.MERCHANT)){
+            var merchantTransactionPageResponse = merchantTransactionRepo.findAllByUser(user, pageRequest);
+            var merchantTransactions = merchantTransactionPageResponse.getContent();
+            var merchantTransactionDTOs = merchantTransactions.stream().map(s -> new MerchantTransactionDTO(s, encryptDecrypt)).toList();
+            return new GetMerchantPaymentsResponse(merchantTransactionDTOs, merchantTransactionPageResponse.getNumber(), merchantTransactionPageResponse.getSize(), merchantTransactionPageResponse.getTotalPages(), merchantTransactionPageResponse.getTotalElements());
+        }else if(user.getUserType().equals(UserType.PERSONAL)){
+            var personalTransactionPageResponse = personalTransactionRepo.findAllByUser(user, pageRequest);
+            var personalTransactions = personalTransactionPageResponse.getContent();
+            var personalTransactionDTOs =personalTransactions.stream().map(s -> new PersonalTransactionDTO(s, encryptDecrypt)).toList();
+            return new GetPersonalPaymentsResponse(personalTransactionDTOs, personalTransactionPageResponse.getNumber(), personalTransactionPageResponse.getSize(), personalTransactionPageResponse.getTotalPages(), personalTransactionPageResponse.getTotalElements());
+        }
+        var error = String.format("User with API key %s is neither a merchant or personal", getPaymentsRequest.getApiKey());
+        log.warn(error);
+        throw new APException(APErrorType.APPLICATION_EXCEPTION, error, this.getClass().getName());
+    }
 
     private String generateReferenceId(String fullName) {
         var dateTime = LocalDateTime.now();

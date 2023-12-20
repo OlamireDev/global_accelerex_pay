@@ -2,11 +2,9 @@ package com.olamiredev.accelepay.service;
 
 import com.olamiredev.accelepay.data.AccountDetail;
 import com.olamiredev.accelepay.enums.RecognisedBank;
-import com.olamiredev.accelepay.payload.request.CardPaymentType;
+import com.olamiredev.accelepay.payload.request.payment.make.CardPaymentType;
 import com.olamiredev.accelepay.util.Pair;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class CardProcessingService {
