@@ -107,13 +107,13 @@ public class PaymentProcessingService {
                 var merchantTransaction = MerchantTransaction.builder().transactionReferenceNumber(generateReferenceId(merchant.getFullName()))
                         .paymentAmount(paymentRequest.getAmountToPay()).user(merchant).paymentDescription(paymentRequest.getPaymentDescription())
                         .transactionPaymentType(TransactionPaymentType.CARD).paymentTypeDetails(encryptedCardDetails)
-                        .paymentStatus(PaymentStatus.FAILED).paymentError(transactionServiceResponse.first().name()).build();
+                        .paymentStatus(PaymentStatus.FAILED).paymentError(transactionServiceResponse.first().name()).requestPlatform(paymentRequest.getRequestPlatform()).build();
                 merchantTransactionRepo.save(merchantTransaction);
                 return new DefaultPaymentResponse(transactionServiceResponse.first(), merchantTransaction.getTransactionReferenceNumber(), PaymentStatus.FAILED, paymentRequest.getAmountToPay());
             }
             var merchantTransaction = MerchantTransaction.builder().transactionReferenceNumber(generateReferenceId(merchant.getFullName()))
                     .paymentAmount(paymentRequest.getAmountToPay()).user(merchant).paymentDescription(paymentRequest.getPaymentDescription())
-                    .transactionPaymentType(TransactionPaymentType.CARD).paymentTypeDetails(encryptedCardDetails).paymentStatus(PaymentStatus.SUCCESSFUL).build();
+                    .transactionPaymentType(TransactionPaymentType.CARD).paymentTypeDetails(encryptedCardDetails).paymentStatus(PaymentStatus.SUCCESSFUL).requestPlatform(paymentRequest.getRequestPlatform()).build();
             merchantTransactionRepo.save(merchantTransaction);
             return new DefaultPaymentResponse(null, merchantTransaction.getTransactionReferenceNumber(), PaymentStatus.SUCCESSFUL, paymentRequest.getAmountToPay());
         }

@@ -7,11 +7,11 @@ and view the payments made on the platform. This application is built with the f
 2. Spring Data JPA
 3. Lombok
 4. H2 Database
-5. Java 21
+5. Java 17
 
 ## The Thought Process
 The design of the application is based on the following assumptions:
-1. The application is a payment processor for merchants and personal users and as such it does not integrate with other payment platforms like PayStack(Integrations used are for demonstration purposes)
+1. The application is a payment processor for merchants and personal users and as such it does not integrate with other payment platforms like PayStack
 2. The application only supports card payments and assumes the currency being used is the Nigerian Naira
 3. The application is a REST API and as such does not have a UI
 4. The application resolves card details to their affiliated account numbers and then proceeds to make bank to bank transfers
@@ -81,4 +81,95 @@ When a personal user makes a payment we assume the following:
 
 With these assumptions in mind we can proceed to make a bank to bank transfer after resolving the user's card details to their account number.
 
-###
+### POST /api/v1/payment/getPayments:
+for both merchants and personal users the requests are the same
+```json
+{
+  "apiKey":"01234ADEDC8890A",
+  "pageNumber":0,
+  "pageSize":20
+}
+```
+`apikey` is used to authenticate the request and resolve if the user is client or merchant
+`pageNumber` and `pageSize` are used to paginate the response, specifying the page number( starting from 0) and the size of the page requested(a minimum of 1)
+
+the response for a successful merchant request is as follows:
+```json
+{
+  "merchantTransactions": [
+    {
+      "transactionReferenceNumber": "6752-1489-20231120233",
+      "paymentDescription": "Dodo Pizza Order No.6 for Customer 116",
+      "paymentAmount": 1500.00,
+      "transactionPaymentType": "CARD",
+      "paymentTypeDetails": "{\"cardNumber\":\"123456******7654\",\"cardExpiry\":\"08/26\",\"cardCcv\":null,\"cardPin\":null,\"cardHolderName\":\"Juliet Ambodaka\"}",
+      "paymentStatus": "SUCCESSFUL",
+      "paymentError": null,
+      "requestPlatform": "ANDROID",
+      "transactionDate": "2023-12-20T23:03:37.541421"
+    },
+    {
+      "transactionReferenceNumber": "4922-1489-20231120233",
+      "paymentDescription": "Dodo Pizza Order No.6 for Customer 116",
+      "paymentAmount": 1500.00,
+      "transactionPaymentType": "CARD",
+      "paymentTypeDetails": "{\"cardNumber\":\"123456******7654\",\"cardExpiry\":\"08/26\",\"cardCcv\":null,\"cardPin\":null,\"cardHolderName\":\"Juliet Ambodaka\"}",
+      "paymentStatus": "SUCCESSFUL",
+      "paymentError": null,
+      "requestPlatform": "ANDROID",
+      "transactionDate": "2023-12-20T23:03:38.601271"
+    }
+  ],
+  "pageNumber": 0,
+  "pageSize": 10,
+  "totalPages": 1,
+  "totalElements": 2
+}
+```
+
+the response for a successful personal request is as follows:
+```json
+{
+  "personalTransactions": [
+    {
+      "transactionReferenceNumber": "9485-1759-20231120234",
+      "paymentDescription": "Dodo Pizza Order No.6 for Customer 116",
+      "paymentAmount": 150.00,
+      "transactionPaymentType": "CARD",
+      "paymentTypeDetails": "{\"cardNumber\":\"123456******7654\",\"cardExpiry\":\"08/26\",\"cardCcv\":null,\"cardPin\":null,\"cardHolderName\":\"Juliet Ambodaka\"}",
+      "paymentStatus": "SUCCESSFUL",
+      "paymentError": null,
+      "destinationAccountNumber": "0981235673",
+      "destinationAccountName": "George Agboghoroma",
+      "destinationBank": "GTB",
+      "requestPlatform": "ANDROID",
+      "transactionDate": "2023-12-20T23:04:53.28746"
+    },
+    {
+      "transactionReferenceNumber": "9027-1759-20231120235",
+      "paymentDescription": "Dodo Pizza Order No.6 for Customer 116",
+      "paymentAmount": 5150.00,
+      "transactionPaymentType": "CARD",
+      "paymentTypeDetails": "{\"cardNumber\":\"123456******7654\",\"cardExpiry\":\"08/26\",\"cardCcv\":null,\"cardPin\":null,\"cardHolderName\":\"Juliet Ambodaka\"}",
+      "paymentStatus": "SUCCESSFUL",
+      "paymentError": null,
+      "destinationAccountNumber": "0981235673",
+      "destinationAccountName": "George Agboghoroma",
+      "destinationBank": "GTB",
+      "requestPlatform": "ANDROID",
+      "transactionDate": "2023-12-20T23:05:02.242637"
+    }
+  ],
+  "pageNumber": 0,
+  "pageSize": 10,
+  "totalPages": 1,
+  "totalElements": 2
+}
+```
+## Future Improvements   
+given more time and direction, the following improvements would be made:
+1. Unit and Integration testing with JUnit and Mockito
+2. Using Paystack's API to resolve card details to get valid banks and cache the results with Caffine cache
+
+
+# THANK YOU FOR YOUR TIME
